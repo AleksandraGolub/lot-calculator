@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Калькулятор лота — Bullwaves</title>
+<style>
+:root{
+  --bg:#0f1216; --card:#171b21; --card2:#1e242c; --line:#2b333d;
+  --txt:#e8edf3; --dim:#8b98a8; --acc:#4da3ff; --ok:#3ddc84; --warn:#ffb020; --bad:#ff5c5c;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);
+  font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:560px;margin:0 auto;padding:14px 12px 40px}
+h1{font-size:17px;font-weight:650;margin:6px 0 2px}
+h1 span{color:var(--dim);font-weight:400;font-size:13px;display:block;margin-top:3px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:10px}
+.card h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);
+  margin:0 0 9px;font-weight:600}
+.card h2 u{text-transform:none;letter-spacing:0;text-decoration:none;color:#5f7a95;font-weight:400}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid.g3{grid-template-columns:1fr 1fr 1fr}
+.f{display:flex;flex-direction:column;gap:4px}
+.f label{font-size:11px;color:var(--dim)}
+input[type=number]{width:100%;background:var(--card2);border:1px solid var(--line);color:var(--txt);
+  border-radius:9px;padding:9px 10px;font-size:16px;font-variant-numeric:tabular-nums;outline:none}
+input[type=number]:focus{border-color:var(--acc)}
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.seg{display:flex;flex-wrap:wrap;gap:5px}
+.seg button{flex:1 1 auto;background:var(--card2);border:1px solid var(--line);
+  color:var(--dim);border-radius:9px;padding:9px 6px;font-size:13px;cursor:pointer;font-family:inherit}
+.seg.mode button[aria-pressed="true"]{background:#12324f;border-color:var(--acc);color:#fff}
+.seg.dir button{min-width:calc(50% - 3px)}
+.seg.dir button[aria-pressed="true"][data-d="buy"]{background:#0f3a24;border-color:var(--ok);color:#fff}
+.seg.dir button[aria-pressed="true"][data-d="sell"]{background:#3d1616;border-color:var(--bad);color:#fff}
+/* инструменты: тикер брокера крупно, имя и котировка под ним */
+#cSym{display:flex;flex-wrap:wrap;gap:5px}
+#cSym button{flex:0 0 calc(33.333% - 3.4px);display:flex;flex-direction:column;align-items:center;
+  gap:0;padding:7px 3px;min-width:0}
+#cSym button b{font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:-.2px;color:var(--dim)}
+#cSym button i{font-style:normal;font-size:9.5px;color:#6d7a8a;line-height:1.3;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-width:100%}
+#cSym button em{font-style:normal;font-family:var(--mono);font-size:11.5px;color:#5f7a95;
+  font-variant-numeric:tabular-nums;line-height:1.3}
+#cSym button[aria-pressed="true"]{background:#12324f;border-color:var(--acc)}
+#cSym button[aria-pressed="true"] b{color:#fff}
+#cSym button[aria-pressed="true"] i{color:#9fc4e6}
+#cSym button[aria-pressed="true"] em{color:#bfe0ff}
+#cSym button.live em{color:#54d68d}
+.qbar{display:flex;align-items:center;gap:8px;margin-top:8px}
+.qbar .st{font-size:11px;color:var(--dim);flex:1;line-height:1.35}
+.qbar button{background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:8px;
+  padding:6px 10px;font-size:12px;font-family:inherit;cursor:pointer;white-space:nowrap}
+.out{margin-top:10px;background:linear-gradient(180deg,#152033,#12171e);border:1px solid #24354d;
+  border-radius:14px;padding:13px}
+.big{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.big .k{font-size:12px;color:var(--dim)}
+.big .v{font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.rows{margin-top:9px;border-top:1px solid var(--line);padding-top:9px;display:flex;flex-direction:column;gap:6px}
+.r{display:flex;justify-content:space-between;gap:10px;font-size:13.5px}
+.r .k{color:var(--dim)}
+.r .v{font-variant-numeric:tabular-nums;text-align:right}
+.r.hi .v{font-weight:650}
+.hint{margin-top:9px;font-size:12.5px;border-radius:9px;padding:8px 10px;background:#12212f;color:#9fc4e6}
+.hint.warn{background:#2c2410;color:#ffcf7a}
+.hint.bad{background:#2c1414;color:#ff9b9b}
+.hint.ok{background:#0f2a1d;color:#8ee7b4}
+.note{font-size:11.5px;color:var(--dim);margin-top:7px;line-height:1.4}
+button.act{width:100%;margin-top:9px;background:#12324f;border:1px solid var(--acc);color:#fff;
+  border-radius:10px;padding:10px;font-size:14px;font-family:inherit;cursor:pointer}
+button.act.sec{background:var(--card2);border-color:var(--line);color:var(--txt)}
+table.book{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px}
+table.book th{text-align:left;color:var(--dim);font-weight:500;font-size:11px;padding:3px 4px;
+  border-bottom:1px solid var(--line)}
+table.book td{padding:5px 4px;border-bottom:1px solid #212932;font-variant-numeric:tabular-nums}
+table.book td.n{text-align:right}
+table.book td.rm{color:var(--bad);cursor:pointer;text-align:right;width:22px}
+.tot{display:flex;justify-content:space-between;margin-top:8px;font-size:13.5px;font-weight:600}
+.bar{height:6px;border-radius:4px;background:#222a33;margin-top:7px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);width:0}
+.foot{color:var(--dim);font-size:11px;margin-top:14px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+
+  <h1>Калькулятор лота<span>Bullwaves · свои деньги · спред · маржа</span></h1>
+
+  <!-- СЧЁТ -->
+  <div class="card">
+    <h2>Счёт</h2>
+    <div class="grid">
+      <div class="f"><label>Баланс, $</label><input type="number" id="cBal" step="0.01" value="" placeholder="из MT5"></div>
+      <div class="f"><label>Плавающий P/L, $</label><input type="number" id="cFloat" step="0.01" value="0"></div>
+      <div class="f"><label>Кредит (бонус), $</label><input type="number" id="cBonus" step="0.01" value="" placeholder="Кредит из MT5"></div>
+      <div class="f"><label>Плечо</label><input type="number" id="cLev" step="1" value="1000"></div>
+    </div>
+    <div class="rows">
+      <div class="r hi"><span class="k">Свои деньги (Баланс + плавающий)</span><span class="v" id="oOwn">—</span></div>
+      <div class="r"><span class="k">Средства (со бонусом)</span><span class="v" id="oEquity">—</span></div>
+    </div>
+    <div class="seg mode" id="cBase" style="margin-top:9px">
+      <button data-b="own" aria-pressed="true">% от своих денег</button>
+      <button data-b="eq" aria-pressed="false">% от Средств</button>
+    </div>
+    <div class="note" id="baseNote"></div>
+  </div>
+
+  <!-- ИНСТРУМЕНТ -->
+  <div class="card">
+    <h2>Инструмент <u>— тикеры как в MT5</u></h2>
+    <div id="cSym"></div>
+    <div class="qbar">
+      <span class="st" id="qStat">котировки: не загружены</span>
+      <button id="bQuotes">Обновить</button>
+    </div>
+    <div class="seg dir" id="cDir" style="margin-top:8px">
+      <button data-d="buy" aria-pressed="true">Лонг · Buy</button>
+      <button data-d="sell" aria-pressed="false">Шорт · Sell</button>
+    </div>
+  </div>
+
+  <!-- ВХОД -->
+  <div class="card">
+    <h2>Вход и стоп</h2>
+    <div class="seg mode" id="cMode">
+      <button data-m="price" aria-pressed="true">по ценам</button>
+      <button data-m="dist" aria-pressed="false">по расстоянию</button>
+    </div>
+    <div class="grid" style="margin-top:9px">
+      <div class="f"><label>Цена входа</label><input type="number" id="cEntry" step="0.01" value="4187.4"></div>
+      <div class="f" id="wrapStopPrice"><label>Цена стопа</label><input type="number" id="cStop" step="0.01" value="4177.4"></div>
+      <div class="f" id="wrapStopDist" style="display:none"><label>Стоп, пунктов</label><input type="number" id="cStopD" step="1" value="10"></div>
+      <div class="f"><label>Цель (необязательно)</label><input type="number" id="cTP" step="0.01" placeholder="цена тейка"></div>
+      <div class="f" id="wrapEur" style="display:none"><label>Курс EURUSD</label><input type="number" id="cEur" step="0.0001" value="1.1270"></div>
+    </div>
+    <div class="note" id="symNote"></div>
+  </div>
+
+  <!-- РИСК И ИЗДЕРЖКИ -->
+  <div class="card">
+    <h2>Риск и издержки</h2>
+    <div class="grid g3">
+      <div class="f"><label>Риск, %</label><input type="number" id="cRisk" step="0.1" value="1"></div>
+      <div class="f"><label>Спред (в цене)</label><input type="number" id="cSpr" step="0.00001" value="0.39"></div>
+      <div class="f"><label>Комиссия, $/лот</label><input type="number" id="cComm" step="0.1" value="0"></div>
+    </div>
+    <div class="note" id="sprNote"></div>
+    <div class="rows">
+      <div class="r"><span class="k">Риск в долларах</span><span class="v" id="oRiskUsd">—</span></div>
+      <div class="r"><span class="k">Книга + текущая сделка (правило 1–2%)</span><span class="v" id="oBookPct">—</span></div>
+    </div>
+    <div class="bar"><i id="oBar"></i></div>
+  </div>
+
+  <!-- ИТОГ -->
+  <div class="out">
+    <div class="big">
+      <span class="k">ЛОТ (округлён вниз)</span>
+      <span class="v" id="oLot">—</span>
+    </div>
+    <div class="rows">
+      <div class="r"><span class="k">Тикер / сторона</span><span class="v" id="oSym">—</span></div>
+      <div class="r"><span class="k">Стоп</span><span class="v" id="oStopLvl">—</span></div>
+      <div class="r"><span class="k">Расстояние</span><span class="v" id="oDist">—</span></div>
+      <div class="r"><span class="k">$ за пункт на лоте</span><span class="v" id="oPerPt">—</span></div>
+      <div class="r"><span class="k">Риск по стопу</span><span class="v" id="oRiskStop">—</span></div>
+      <div class="r"><span class="k">‎+ спред и комиссия</span><span class="v" id="oCosts">—</span></div>
+      <div class="r hi"><span class="k">Полный риск</span><span class="v" id="oRiskFull">—</span></div>
+      <div class="r"><span class="k">То же в % от своих</span><span class="v" id="oRiskPct">—</span></div>
+      <div class="r"><span class="k">Маржа под лот</span><span class="v" id="oMargin">—</span></div>
+      <div class="r"><span class="k">Уровень маржи</span><span class="v" id="oML">—</span></div>
+      <div class="r" id="rowRR" style="display:none"><span class="k">R/R до цели</span><span class="v" id="oRR">—</span></div>
+    </div>
+    <div class="hint" id="oHint"></div>
+    <button class="act" id="bCopy">Скопировать итог (5 чисел)</button>
+    <button class="act sec" id="bAdd">Добавить в книгу</button>
+  </div>
+
+  <!-- КНИГА -->
+  <div class="card">
+    <h2>Книга — суммарный риск</h2>
+    <table class="book" id="tBook">
+      <thead><tr><th>Инстр.</th><th>Стор.</th><th>Лот</th><th class="n" style="text-align:right">Риск</th><th style="text-align:right">%</th><th></th></tr></thead>
+      <tbody id="tbBook"></tbody>
+    </table>
+    <div class="tot"><span>Итого риск книги</span><span id="oBookTot">—</span></div>
+    <div class="note">Правило: 1–2% на всю книгу, не на сделку. Добавляй и открытые позиции, и выставленные лимитки.</div>
+  </div>
+
+  <div class="foot">
+    $ за пункт сверены с твоими же закрытыми сделками (journal.csv) и спецификацией Bullwaves.
+    Котировки: золото — онлайн, форекс — суточный курс, индексы (NDXUSD!, DAXEUR!) — вводи вручную.
+    Маржа — оценка; сверяй в терминале.
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ── инструменты ───────────────────────────────────────────────────────────
+   vpu  = $ за 1.00 единицу цены на 1.00 лот (проверено по journal.csv)
+   pip  = размер пункта в цене (для отображения расстояния)
+   dd   = дефолтное расстояние до стопа
+   k    = gold | usdq (доллар вторым) | usdb (доллар первым) | index
+   live = ключ котировки из сети | null = только вручную                */
+var INSTR = {
+  xau:{ru:"Золото",      t:"XAUUSD!", k:"gold",  dec:2, step:0.01,    vpu:100,    pip:1,      dd:10,    unit:"$ хода", spr:0.39,    live:"XAU",    sn:"39 терминала = 0,39 в цене"},
+  ndx:{ru:"Nasdaq 100",  t:"NDXUSD!", k:"index", dec:1, step:0.1,     vpu:10,     pip:1,      dd:30,    unit:"пунктов",spr:3.40,    live:null,     sn:"340 терминала = 3,40 в цене"},
+  dax:{ru:"DAX 40",      t:"DAXEUR!", k:"index", dec:1, step:0.1,     vpu:null,   pip:1,      dd:30,    unit:"пунктов",spr:3.32,    live:null,     sn:"3,32 в цене; €10 за пункт × курс EURUSD"},
+  eur:{ru:"Евро/доллар", t:"EURUSD!", k:"usdq",  dec:5, step:0.00001, vpu:100000, pip:0.0001, dd:0.002, unit:"пипсов", spr:0.00017, live:"EURUSD", sn:"1,7 пипса = $10 за пипс на лот"},
+  gbp:{ru:"Фунт/доллар", t:"GBPUSD!", k:"usdq",  dec:5, step:0.00001, vpu:100000, pip:0.0001, dd:0.002, unit:"пипсов", spr:0.00017, live:"GBPUSD", sn:"$10 за пипс на лот"},
+  aud:{ru:"Аусси/доллар",t:"AUDUSD!", k:"usdq",  dec:5, step:0.00001, vpu:100000, pip:0.0001, dd:0.002, unit:"пипсов", spr:0.00018, live:"AUDUSD", sn:"$10 за пипс на лот"},
+  nzd:{ru:"Киви/доллар", t:"NZDUSD!", k:"usdq",  dec:5, step:0.00001, vpu:100000, pip:0.0001, dd:0.002, unit:"пипсов", spr:0.00020, live:"NZDUSD", sn:"$10 за пипс на лот"},
+  cad:{ru:"Доллар/канадец",t:"USDCAD!",k:"usdb", dec:5, step:0.00001, vpu:null,   pip:0.0001, dd:0.002, unit:"пипсов", spr:0.00017, live:"USDCAD", sn:"доллар первым: пипс = $10 ÷ курс (≈ $7,14 на лот)"},
+  chf:{ru:"Доллар/франк",t:"USDCHF!", k:"usdb",  dec:5, step:0.00001, vpu:null,   pip:0.0001, dd:0.002, unit:"пипсов", spr:0.00017, live:"USDCHF", sn:"доллар первым: пипс = $10 ÷ курс ≈ $12,27 на лот"},
+  jpy:{ru:"Доллар/йена", t:"USDJPY!", k:"usdb",  dec:3, step:0.001,   vpu:null,   pip:0.01,   dd:0.20,  unit:"пипсов", spr:0.017,   live:"USDJPY", sn:"доллар первым, пипс = 0,01 (≈ $6,6 на лот)"}
+};
+var ORDER = ["xau","ndx","dax","eur","gbp","aud","nzd","cad","chf","jpy"];
+// запасные цены на случай, если сети нет — срез 02.10.2026
+var FALLBACK = {xau:4187.4, ndx:30800, dax:25000, eur:1.12700, gbp:1.32080, aud:0.69300,
+                nzd:0.56040, cad:1.42320, chf:0.83230, jpy:157.920};
+
+var cur="xau", dir="buy", mode="price", base="own";
+var book=[], LIVE={}, eurusdLive=0;
+
+var $ = function(id){ return document.getElementById(id); };
+function money(n){
+  n = n||0; var a = Math.abs(n);
+  var s = a >= 100 ? Math.round(a).toLocaleString("ru-RU") : a.toFixed(2).replace(".",",");
+  return (n<0?"−":"") + "$" + s;
+}
+function num(n,d){ return (n||0).toLocaleString("ru-RU",{minimumFractionDigits:d,maximumFractionDigits:d}); }
+function val(id){ return parseFloat(String($(id).value).replace(",",".")) || 0; }
+function priceOf(k){ return LIVE[k] || FALLBACK[k]; }
+
+/* ── котировки: золото онлайн + курсы USD. Обе точки отдают CORS без ключа ── */
+function fetchQuotes(){
+  $("qStat").textContent = "котировки: загружаю…";
+  var pending = 2, got = 0;
+  function done(){
+    pending--;
+    if(pending>0) return;
+    $("qStat").textContent = got
+      ? "котировки: золото онлайн · форекс суточный (" + new Date().toLocaleDateString("ru-RU") +
+        ") · индексы вручную"
+      : "котировки не пришли — введи цену руками";
+    renderSym();
+    if(LIVE[cur]) applyLive(cur);
+  }
+  fetch("https://api.gold-api.com/price/XAU")
+    .then(function(r){ return r.json(); })
+    .then(function(j){ if(j && j.price){ LIVE.xau = +j.price; got++; } })
+    .catch(function(){}).then(done);
+  fetch("https://open.er-api.com/v6/latest/USD")
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      var q = j && j.rates; if(!q) return;
+      if(q.EUR){ LIVE.eur = 1/q.EUR; eurusdLive = LIVE.eur; }
+      if(q.GBP) LIVE.gbp = 1/q.GBP;
+      if(q.AUD) LIVE.aud = 1/q.AUD;
+      if(q.NZD) LIVE.nzd = 1/q.NZD;
+      if(q.CHF) LIVE.chf = q.CHF;
+      if(q.CAD) LIVE.cad = q.CAD;
+      if(q.JPY) LIVE.jpy = q.JPY;
+      got++;
+    }).catch(function(){}).then(done);
+}
+
+/* ── $ за 1.00 единицу цены на 1.00 лот ── */
+function vpuOf(I, entry){
+  if(I.k==="usdb") return entry>0 ? 100000/entry : 0;
+  if(I.t==="DAXEUR!"){ var e = LIVE.eur || val("cEur"); return e>0 ? 10*e : 0; }
+  return I.vpu;
+}
+
+/* ── кнопки инструментов: тикер + имя + котировка ── */
+function renderSym(){
+  var host = $("cSym"); host.innerHTML = "";
+  ORDER.forEach(function(k){
+    var I = INSTR[k], p = LIVE[k];
+    var b = document.createElement("button");
+    b.setAttribute("data-s", k);
+    b.setAttribute("aria-pressed", k===cur);
+    if(p) b.className = "live";
+    b.innerHTML = "<b>" + I.t + "</b><i>" + I.ru + "</i><em>" +
+      (p ? num(p, I.dec) : "введи вручную") + "</em>";
+    host.appendChild(b);
+  });
+}
+
+/* ── состояние при смене инструмента ── */
+function setSym(){
+  var I = INSTR[cur], e = priceOf(cur);
+  e = +e.toFixed(I.dec);
+  $("cEntry").step = I.step; $("cStop").step = I.step; $("cSpr").step = I.step;
+  $("cEntry").value = e;
+  $("cStop").value  = +(dir==="buy" ? e-I.dd : e+I.dd).toFixed(I.dec);
+  $("cStopD").value = I.dd/(I.pip||1);
+  $("cTP").value = "";
+  $("cSpr").value = +I.spr.toFixed(6);
+  $("wrapEur").style.display = (I.t==="DAXEUR!") ? "" : "none";
+  if(eurusdLive) $("cEur").value = +eurusdLive.toFixed(4);
+  $("symNote").textContent = I.t + " (" + I.ru + ") — " + I.sn +
+    (LIVE[cur] ? " · котировка из сети" : " · котировку введи сам");
+  calc();
+}
+/* котировка пришла, пока открыт этот инструмент — подставляем цену */
+function applyLive(k){
+  if(cur!==k) return;
+  var I=INSTR[k], e=LIVE[k];
+  $("cEntry").value = +e.toFixed(I.dec);
+  $("cStop").value  = +(dir==="buy" ? e-I.dd : e+I.dd).toFixed(I.dec);
+  $("symNote").textContent = I.t + " (" + I.ru + ") — " + I.sn + " · котировка из сети";
+  calc();
+}
+
+/* ── стоп в правильную сторону ── */
+function syncStop(){
+  var I = INSTR[cur];
+  if(mode==="dist") return;
+  var e=val("cEntry"), s=val("cStop"), d=Math.abs(e-s);
+  if(!(d>0)) d=I.dd;
+  $("cStop").value = +(dir==="buy" ? e-d : e+d).toFixed(I.dec);
+}
+
+/* ── главный расчёт ── */
+function calc(){
+  var I=INSTR[cur];
+  var bal=val("cBal"), flt=val("cFloat"), bon=val("cBonus"), lev=val("cLev")||1000;
+  var own=bal+flt, eq=own+bon;
+  $("oOwn").textContent = money(own);
+  $("oEquity").textContent = money(eq);
+  $("baseNote").textContent = (base==="own")
+    ? "Считаем от «свои деньги» = Баланс + плавающий. Это твой же принцип: бонус списывается, когда свои доходят до нуля."
+    : "Считаем от Средств (с бонусом). Помни: бонус снимается целиком, знаменатель завышен.";
+
+  var baseMoney = (base==="own") ? own : eq;
+  var riskPct = val("cRisk");
+  var riskUsd = baseMoney*riskPct/100;
+
+  var entry = val("cEntry");
+  var vpu = vpuOf(I, entry);
+  var pip = I.pip||1;
+
+  var distPrice;
+  if(mode==="price"){
+    distPrice = Math.abs(entry - val("cStop"));
+  }else{
+    distPrice = val("cStopD")*pip;
+    if(entry>0) $("cStop").value = +(dir==="buy" ? entry-distPrice : entry+distPrice).toFixed(I.dec);
+  }
+  var distUnits = distPrice/pip;
+
+  var sprPrice = val("cSpr"), comm = val("cComm");
+  var stopLossPerLot = distPrice*vpu;
+  var spreadPerLot   = sprPrice*vpu;
+  var fullPerLot     = stopLossPerLot + spreadPerLot + comm;
+  var lot = fullPerLot>0 ? Math.floor(riskUsd/fullPerLot*100)/100 : 0;
+
+  var riskStop = stopLossPerLot*lot;
+  var costs    = (spreadPerLot+comm)*lot;
+  var riskFull = riskStop+costs;
+  var margin   = entry>0 ? lot*vpu*entry/lev : 0;
+  var ml       = margin>0 ? eq/margin*100 : 0;
+
+  var tp = val("cTP"), rr = null;
+  if(tp>0 && entry>0){
+    var rewardPrice = (dir==="buy") ? (tp-entry) : (entry-tp);
+    if(rewardPrice>0){
+      var reward = rewardPrice*vpu*lot;
+      rr = riskFull>0 ? reward/riskFull : 0;
+      $("rowRR").style.display = "";
+      $("oRR").textContent = num(rr,2) + "  (цель " + num(rewardPrice/pip, pip<0.001?1:0) + " " + I.unit + ")";
+    }else{ $("rowRR").style.display = "none"; }
+  }else{ $("rowRR").style.display = "none"; }
+
+  var stopLvl = (mode==="price") ? val("cStop")
+              : (dir==="buy" ? entry-distPrice : entry+distPrice);
+  var dsp = (pip<0.001) ? 1 : 0;
+
+  $("oLot").textContent      = lot.toFixed(2);
+  $("oSym").textContent      = I.t + " · " + (dir==="buy" ? "лонг" : "шорт");
+  $("oStopLvl").textContent  = num(stopLvl, I.dec);
+  $("oDist").textContent     = num(distUnits, dsp) + " " + I.unit;
+  $("oPerPt").textContent    = "$" + num(vpu*pip*lot, 2);
+  $("oRiskStop").textContent = money(riskStop);
+  $("oCosts").textContent    = money(costs);
+  $("oRiskFull").textContent = money(riskFull);
+  $("oRiskPct").textContent  = own>0 ? num(riskFull/own*100,2)+"% ("+money(riskFull)+" из "+money(own)+")" : "—";
+  $("oMargin").textContent   = money(margin);
+  $("oML").textContent       = ml>0 ? num(ml,0)+"%" : "—";
+  $("oRiskUsd").textContent  = money(riskUsd);
+
+  var bookRisk = book.reduce(function(a,b){ return a+b.risk; },0) + riskFull;
+  var bookPct  = own>0 ? bookRisk/own*100 : 0;
+  $("oBookPct").textContent = num(bookPct,2)+"%  ("+money(bookRisk)+")";
+  var bar=$("oBar");
+  bar.style.width = Math.min(bookPct/3*100,100)+"%";
+  bar.style.background = bookPct>2 ? "var(--bad)" : (bookPct>1.5 ? "var(--warn)" : "var(--ok)");
+
+  /* проверки */
+  var h=$("oHint"), msgs=[], cls="hint";
+  var wrongSide = (dir==="buy" && val("cStop")>=entry && entry) || (dir==="sell" && val("cStop")<=entry && entry);
+  if(mode==="price" && wrongSide){
+    msgs.push(dir==="buy" ? "Для лонга стоп должен быть НИЖЕ входа." : "Для шорта стоп должен быть ВЫШЕ входа.");
+    cls="hint bad";
+  }
+  if(lot<0.01 && !wrongSide){
+    msgs.push("Стоп слишком широкий для этого риска — меньше минимального лота 0,01. Сократи стоп или прими больший риск.");
+    cls="hint warn";
+  }
+  if(margin>own && own>0){
+    msgs.push("Маржи нужно "+money(margin)+", а своих денег "+money(own)+" — лот не откроется.");
+    cls="hint bad";
+  }
+  if(spreadPerLot>0 && tp>0 && Math.abs(tp-entry) < 10*sprPrice){
+    msgs.push("Цель меньше 10× спреда — скальп не отбивает издержки ни при каком винрейте.");
+    cls="hint warn";
+  }
+  var hr = new Date().getHours();
+  if(hr===0 || hr===23){
+    msgs.push("Сейчас окно ролловера/закрытия (23:00–01:00 Кипр): спреды разъезжаются, вход не открывать.");
+    cls="hint warn";
+  }
+  if(!msgs.length){
+    msgs.push(lot>0 ? "Округлено вниз — полный риск не превысит заданный." : "Введи вход и стоп.");
+    cls="hint ok";
+  }
+  h.className=cls; h.textContent=msgs.join(" ");
+  $("sprNote").textContent = "Спред " + num(sprPrice, I.step<0.01?6:2) + " в цене = " +
+    money(sprPrice*vpu) + " на лот = " + money(spreadPerLot*Math.max(lot,0.01)) + " на твоём лоте.";
+
+  renderBook();
+  window.__out = {
+    ticker:I.t, dir:dir, stop:+stopLvl.toFixed(I.dec), distUnits:+distUnits.toFixed(4),
+    unit:I.unit, lot:lot, riskFull:+riskFull.toFixed(2),
+    riskPct:+(own>0?riskFull/own*100:0).toFixed(2), own:+own.toFixed(2), rr:rr
+  };
+}
+
+/* ── книга ── */
+function renderBook(){
+  var tb=$("tbBook"); tb.innerHTML="";
+  var own = val("cBal")+val("cFloat");
+  book.forEach(function(b,i){
+    var tr=document.createElement("tr");
+    tr.innerHTML = "<td>"+b.t+"</td><td>"+(b.dir==="buy"?"лонг":"шорт")+"</td><td>"+b.lot.toFixed(2)+
+      "</td><td class='n'>"+money(b.risk)+"</td><td class='n'>"+(own>0?num(b.risk/own*100,2)+"%":"—")+
+      "</td><td class='rm' data-i='"+i+"'>×</td>";
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll(".rm").forEach(function(el){
+    el.onclick=function(){ book.splice(+el.getAttribute("data-i"),1); renderBook(); calc(); };
+  });
+  var tot = book.reduce(function(a,b){ return a+b.risk; },0);
+  $("oBookTot").textContent = money(tot) + (own>0 ? "  = "+num(tot/own*100,2)+"% своих" : "");
+}
+
+/* ── обработчики ── */
+$("cSym").addEventListener("click", function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  cur = b.getAttribute("data-s"); renderSym(); setSym();
+});
+$("cDir").addEventListener("click", function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  var kids=$("cDir").children;
+  for(var i=0;i<kids.length;i++) kids[i].setAttribute("aria-pressed", kids[i]===b);
+  dir = b.getAttribute("data-d"); syncStop(); calc();
+});
+$("cBase").addEventListener("click", function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  var kids=$("cBase").children;
+  for(var i=0;i<kids.length;i++) kids[i].setAttribute("aria-pressed", kids[i]===b);
+  base = b.getAttribute("data-b"); calc();
+});
+$("cMode").addEventListener("click", function(e){
+  var b=e.target.closest("button"); if(!b) return;
+  var kids=$("cMode").children;
+  for(var i=0;i<kids.length;i++) kids[i].setAttribute("aria-pressed", kids[i]===b);
+  mode = b.getAttribute("data-m");
+  $("wrapStopPrice").style.display = mode==="price" ? "" : "none";
+  $("wrapStopDist").style.display  = mode==="dist"  ? "" : "none";
+  if(mode==="price") syncStop();
+  calc();
+});
+["cBal","cFloat","cBonus","cLev","cRisk","cEntry","cStop","cStopD","cTP","cSpr","cComm","cEur"]
+  .forEach(function(id){ $(id).addEventListener("input", function(){
+    if(id==="cEntry" && mode==="price") syncStop();
+    calc();
+  }); });
+
+$("bQuotes").onclick = fetchQuotes;
+$("bAdd").onclick = function(){
+  var o=window.__out; if(!o||o.lot<=0) return;
+  book.push({t:o.ticker, dir:o.dir, lot:o.lot, risk:o.riskFull});
+  renderBook(); calc();
+};
+$("bCopy").onclick = function(){
+  var o=window.__out; if(!o) return;
+  var txt = o.ticker+" "+(o.dir==="buy"?"лонг":"шорт")+"\n"+
+    "стоп "+o.stop+"\n"+
+    "расстояние "+num(o.distUnits, o.unit==="пипсов"?1:0)+" "+o.unit+"\n"+
+    "лот "+o.lot.toFixed(2)+"\n"+
+    "риск "+money(o.riskFull)+" = "+num(o.riskPct,2)+"% своих ("+money(o.own)+")"+
+    (o.rr!=null ? "\nR/R "+num(o.rr,2) : "");
+  if(navigator.clipboard) navigator.clipboard.writeText(txt);
+  $("bCopy").textContent = "Скопировано";
+  setTimeout(function(){ $("bCopy").textContent = "Скопировать итог (5 чисел)"; },1200);
+};
+
+renderSym();
+setSym();
+setTimeout(fetchQuotes, 200);
+})();
+</script>
+</body>
+</html>
